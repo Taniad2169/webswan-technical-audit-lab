@@ -31,8 +31,8 @@ header.site p{margin:0;max-width:62ch;color:#e3f3f9}
 main{margin-top:-22px;padding-bottom:48px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 6px 18px rgba(16,42,67,.07)}
 form.scan{display:flex;gap:10px;flex-wrap:wrap}
-form.scan label{flex:1 0 100%;font-weight:700}
-form.scan input{flex:1 1 260px;min-width:0;font:inherit;padding:12px 14px;border:2px solid #829ab1;border-radius:12px;background:#fff;color:var(--ink)}
+form.scan label{flex:1 0 100%;font-weight:700} .other-wrap{flex:1 0 100%;display:flex;gap:8px;flex-wrap:wrap;align-items:center} .other-wrap[hidden]{display:none} .cnt{color:var(--muted);font-size:.9rem}
+form.scan input,form.scan select{flex:1 1 260px;min-width:0;font:inherit;padding:12px 14px;border:2px solid #829ab1;border-radius:12px;background:#fff;color:var(--ink)}
 button{font:inherit;cursor:pointer}
 .btn{border:2px solid var(--brand);background:var(--brand);color:var(--brand-ink);padding:12px 20px;border-radius:12px;font-weight:700}
 .btn.secondary{background:#fff;color:var(--brand)}
@@ -88,9 +88,9 @@ footer{color:var(--muted);font-size:.88rem;padding:0 0 30px}
     <form class="scan" id="scanForm" novalidate>
       <label for="url">Website address</label>
       <input id="url" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="example.com" aria-describedby="hint" required>
-      <button class="btn" id="go" type="submit">Run scan</button>
+      <label for="state">State privacy law to check the policy against</label> <select id="state" name="state" aria-describedby="stateHint"> <option value="">None (skip the state review)</option> <option value="CA">California</option><option value="NY">New York</option><option value="FL">Florida</option> <option value="TX">Texas</option><option value="UT">Utah</option><option value="NV">Nevada</option> <option value="NJ">New Jersey</option><option value="AZ">Arizona</option><option value="CT">Connecticut</option> <option value="GA">Georgia</option><option value="VA">Virginia</option><option value="OTHER">Other</option> </select> <div class="other-wrap" id="otherWrap" hidden> <label for="other">State name (up to 12 words)</label> <input id="other" name="other" type="text" maxlength="100" autocomplete="off" aria-describedby="otherCount"> <span class="cnt" id="otherCount" aria-live="polite">0 of 12 words</span> </div> <button class="btn" id="go" type="submit">Run scan</button>
     </form>
-    <p class="hint" id="hint">Only public pages can be scanned. The scan reads the page source of the one address you enter, plus its privacy policy page if it links to one.</p>
+    <p class="hint" id="stateHint">The state review reads the site's privacy policy and lists what that state's law generally expects it to cover. It does not decide whether the law applies to the business.</p> <p class="hint" id="hint">Only public pages can be scanned. The scan reads the page source of the one address you enter, plus its privacy policy page if it links to one.</p>
     <div id="status" role="status" aria-live="polite"></div>
   </section>
 
@@ -117,7 +117,7 @@ footer{color:var(--muted);font-size:.88rem;padding:0 0 30px}
 (function () {
   var form = document.getElementById('scanForm'), input = document.getElementById('url'), go = document.getElementById('go');
   var statusEl = document.getElementById('status'), results = document.getElementById('results');
-  var last = null;
+  var last = null; var stateSel = document.getElementById('state'), otherIn = document.getElementById('other'), otherWrap = document.getElementById('otherWrap'), otherCount = document.getElementById('otherCount'); function words(t) { return t.trim().split(/\s+/).filter(Boolean); } stateSel.addEventListener('change', function () { var o = stateSel.value === 'OTHER'; otherWrap.hidden = !o; if (o) otherIn.focus(); }); otherIn.addEventListener('input', function () { var w = words(otherIn.value); if (w.length > 12) { otherIn.value = w.slice(0, 12).join(' '); w = words(otherIn.value); } otherCount.textContent = w.length + ' of 12 words'; });
   var LABEL = { pass: 'Pass', warn: 'Warning', fail: 'Fail', info: 'Note', na: 'Not checkable' };
   var ORDER = ['fail', 'warn', 'pass', 'info', 'na'];
 
@@ -127,12 +127,12 @@ footer{color:var(--muted);font-size:.88rem;padding:0 0 30px}
 
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
-    var v = input.value.trim();
+    var v = input.value.trim(); if (stateSel.value === 'OTHER' && !otherIn.value.trim()) { setStatus(el('div', 'error', 'Type the state name (up to 12 words), or pick a state from the list.')); otherIn.focus(); return; }
     if (!v) { var er = el('div', 'error', 'Enter a website address to scan.'); setStatus(er); input.focus(); return; }
     go.disabled = true;
     var w = el('div', 'working'); w.appendChild(el('span', 'spin')); w.appendChild(el('span', null, 'Scanning. This usually takes 5 to 15 seconds.'));
     setStatus(w);
-    fetch('/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: v }) })
+    fetch('/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: v, state: stateSel.value, other: otherIn.value }) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j, status: r.status }; }); })
       .then(function (x) {
         go.disabled = false;
