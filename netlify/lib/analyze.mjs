@@ -291,14 +291,14 @@ export function analyze({ url, status, headers = {}, html = '', bytes = 0, priva
     personalForms.length ? `${personalForms.length} form(s) ask for name, email or phone. Check that a privacy notice is shown near them.` : 'No such forms found in the raw HTML.');
 
   if (privacy && privacy.html) {
-    const pl = (() => { const strip = (sel) => { const $p = cheerio.load(privacy.html); $p(sel).remove(); return text($p('body').text()); }; const main = strip('script,style,noscript,template,svg,nav,header,footer,aside,[class*="cookie"],[id*="cookie"],[class*="consent"],[id*="consent"],[class*="chat"],[id*="chat"]'); return main.length >= 200 ? main : strip('script,style,noscript,template,svg'); })();
+    const pl = (() => { const strip = (sel, root = 'body') => { const $p = cheerio.load(privacy.html); $p(sel).remove(); return text($p(root).text()); }; const inMain = strip('script,style,noscript,template,svg,nav,header,footer,aside,[class*="cookie"],[id*="cookie"],[class*="consent"],[id*="consent"],[class*="chat"],[id*="chat"]', 'main,[role="main"]'); if (inMain.length >= 200) return inMain; const main = strip('script,style,noscript,template,svg,nav,header,footer,aside,[class*="cookie"],[id*="cookie"],[class*="consent"],[id*="consent"],[class*="chat"],[id*="chat"]'); return main.length >= 200 ? main : strip('script,style,noscript,template,svg'); })();
     const pol = pl.toLowerCase();
     priv('policy-fetch', 'Privacy policy page was readable', 'pass', `Read ${privacy.url} (${pl.length.toLocaleString()} characters).`);
     const has = (re) => re.test(pl);
     priv('policy-ca', 'Policy mentions California privacy rights', has(/california|ccpa|cpra|consumer privacy act/i) ? 'pass' : 'warn',
       has(/california|ccpa|cpra|consumer privacy act/i) ? 'California / CCPA / CPRA language found.' : 'No mention of California, the CCPA or the CPRA. If the business serves California residents and meets the thresholds, the policy is expected to cover these rights.');
-    priv('policy-rights', 'Policy lists consumer rights', (has(/right to (know|access)/i) && has(/delete/i)) ? 'pass' : 'warn',
-      (has(/right to (know|access)/i) && has(/delete/i)) ? 'Mentions rights to know/access and to delete.' : 'Did not find the rights to know/access and to delete described.');
+    priv('policy-rights', 'Policy lists consumer rights', (has(/right[^.]{0,80}\b(know|access)\b|\bknow what (personal )?information|\baccess,? (correct|or delete|and delete)/i) && has(/delete/i)) ? 'pass' : 'warn',
+      (has(/right[^.]{0,80}\b(know|access)\b|\bknow what (personal )?information|\baccess,? (correct|or delete|and delete)/i) && has(/delete/i)) ? 'Mentions rights to know/access and to delete.' : 'Did not find the rights to know/access and to delete described.');
     priv('policy-correct', 'Policy mentions right to correct', has(/\bcorrect(ion)?\b|rectif/i) ? 'pass' : 'info', has(/\bcorrect(ion)?\b|rectif/i) ? 'Mentioned.' : 'Not found. The right to correct was added by the CPRA.');
     priv('policy-optout', 'Policy explains opt-out of sale/sharing', has(/opt[- ]?out|do not sell|do not share/i) ? 'pass' : 'warn', has(/opt[- ]?out|do not sell|do not share/i) ? 'Opt-out language found.' : 'No opt-out language found.');
     priv('policy-gpc', 'Policy mentions Global Privacy Control', has(/global privacy control|\bgpc\b|opt-out preference signal/i) ? 'pass' : 'info', has(/global privacy control|\bgpc\b|opt-out preference signal/i) ? 'Mentioned. Whether the site actually honors the signal cannot be tested here.' : 'Not mentioned.');
