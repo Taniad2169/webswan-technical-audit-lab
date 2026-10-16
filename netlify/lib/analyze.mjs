@@ -1,7 +1,7 @@
 // Static analysis of a fetched page. Pure function: no network access here.
 // Every check reports what was actually found. Where a result cannot be
 // established from static HTML, the status is "na" instead of a guess.
-import * as cheerio from 'cheerio';
+import * as cheerio from 'cheerio'; import { reviewState } from './states.mjs';
 
 const TRACKERS = [
   ['Google Analytics / GA4', /googletagmanager\.com\/gtag\/js|google-analytics\.com\/(analytics|ga)\.js|gtag\(/i],
@@ -86,7 +86,7 @@ function mk() {
   return { groups, add };
 }
 
-export function analyze({ url, status, headers = {}, html = '', bytes = 0, privacy = null, redirects = [] }) {
+export function analyze({ url, status, headers = {}, html = '', bytes = 0, privacy = null, redirects = [], state = null, other = '' }) {
   const $ = cheerio.load(html);
   const u = new URL(url);
   const { groups, add } = mk();
@@ -315,7 +315,7 @@ export function analyze({ url, status, headers = {}, html = '', bytes = 0, priva
 
   priv('gpc', 'Honors Global Privacy Control signal', 'na', 'Not checkable from page source. It needs a browser test with the signal turned on.');
 
-  // If the site answered with a bot-check / firewall page, nothing read from it describes the real site.
+  const stateGroup = reviewState({ state, other, policyHtml: privacy && privacy.html, policyUrl: privacy && privacy.url }); if (stateGroup) groups.push(stateGroup); // If the site answered with a bot-check / firewall page, nothing read from it describes the real site.
   const challenge = detectChallenge(status, headers, html);
   if (challenge) {
     const keep = new Set(['https', 'status']);
