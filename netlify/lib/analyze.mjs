@@ -291,7 +291,7 @@ export function analyze({ url, status, headers = {}, html = '', bytes = 0, priva
     personalForms.length ? `${personalForms.length} form(s) ask for name, email or phone. Check that a privacy notice is shown near them.` : 'No such forms found in the raw HTML.');
 
   if (privacy && privacy.html) {
-    const pl = text(cheerio.load(privacy.html)('body').text());
+    const pl = (() => { const strip = (sel) => { const $p = cheerio.load(privacy.html); $p(sel).remove(); return text($p('body').text()); }; const main = strip('script,style,noscript,template,svg,nav,header,footer,aside,[class*="cookie"],[id*="cookie"],[class*="consent"],[id*="consent"],[class*="chat"],[id*="chat"]'); return main.length >= 200 ? main : strip('script,style,noscript,template,svg'); })();
     const pol = pl.toLowerCase();
     priv('policy-fetch', 'Privacy policy page was readable', 'pass', `Read ${privacy.url} (${pl.length.toLocaleString()} characters).`);
     const has = (re) => re.test(pl);
