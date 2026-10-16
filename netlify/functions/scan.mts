@@ -1,7 +1,7 @@
 import type { Config, Context } from "@netlify/functions";
 import dns from "node:dns/promises";
 import net from "node:net";
-import { analyze } from "../lib/analyze.mjs";
+import { analyze } from "../lib/analyze.mjs"; import { STATES, cleanOtherName } from "../lib/states.mjs";
 
 const MAX_BYTES = 2_000_000;
 const MAX_REDIRECTS = 5;
@@ -85,12 +85,12 @@ function json(body: unknown, status = 200) {
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") return json({ error: "Use POST." }, 405);
-  let body: { url?: string };
+  let body: { url?: string; state?: string; other?: string };
   try { body = await req.json(); } catch { return json({ error: "Send the website address as JSON." }, 400); }
   let input = String(body.url || "").trim();
   if (!input) return json({ error: "Enter a website address." }, 400);
   if (input.length > 2000) return json({ error: "That address is too long." }, 400);
-  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(input)) input = "https://" + input;
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(input)) input = "https://" + input; const state = String(body.state || "").toUpperCase().slice(0, 8); if (state && state !== "OTHER" && !STATES.some((s) => s.code === state)) return json({ error: "Choose a state from the list." }, 400); const other = cleanOtherName(body.other); if (state === "OTHER" && !other) return json({ error: "Type the state name (up to 12 words)." }, 400);
 
   try {
     const page = await safeFetch(input);
@@ -116,7 +116,7 @@ export default async (req: Request, _context: Context) => {
       }
     } catch { /* privacy page unreadable: the report says so */ }
 
-    const result = analyze({ url: page.url, status: page.status, headers: page.headers, html: page.html, bytes: page.bytes, privacy, redirects: page.redirects });
+    const result = analyze({ url: page.url, status: page.status, headers: page.headers, html: page.html, bytes: page.bytes, privacy, redirects: page.redirects, state, other });
     result.meta.finalUrl = page.url;
     return json(result);
   } catch (e) {
