@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebSwan Technical Audit Lab</title>
+<meta name="description" content="Check a public website for common accessibility, privacy and technical issues. Every result shows what was found and what could not be checked.">
+<style>
+:root{
+  --bg:#f3f8fb; --card:#ffffff; --ink:#102a43; --muted:#486581; --line:#d9e2ec;
+  --brand:#0b6e8f; --brand-ink:#ffffff; --brand-soft:#e3f3f9;
+  --pass:#0a6b3a; --pass-bg:#e4f6ec;
+  --warn:#8a5300; --warn-bg:#fff3d6;
+  --fail:#a4151e; --fail-bg:#fde8ea;
+  --info:#1f4e79; --info-bg:#e6effa;
+  --na:#52606d; --na-bg:#eef1f4;
+  --focus:#7a3cff;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;min-height:100dvh}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:8px;background:#fff;color:var(--ink);padding:8px 12px;border-radius:8px;z-index:10}
+.skip:focus{left:8px}
+header.site{background:linear-gradient(135deg,#0b3c5d,#0b6e8f);color:#fff;padding:28px 16px 36px}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px}
+header.site .wrap{padding:0}
+h1{margin:0 0 6px;font-size:1.7rem;line-height:1.2}
+header.site p{margin:0;max-width:62ch;color:#e3f3f9}
+main{margin-top:-22px;padding-bottom:48px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 6px 18px rgba(16,42,67,.07)}
+form.scan{display:flex;gap:10px;flex-wrap:wrap}
+form.scan label{flex:1 0 100%;font-weight:700}
+form.scan input{flex:1 1 260px;min-width:0;font:inherit;padding:12px 14px;border:2px solid #829ab1;border-radius:12px;background:#fff;color:var(--ink)}
+button{font:inherit;cursor:pointer}
+.btn{border:2px solid var(--brand);background:var(--brand);color:var(--brand-ink);padding:12px 20px;border-radius:12px;font-weight:700}
+.btn.secondary{background:#fff;color:var(--brand)}
+.btn[disabled]{opacity:.65;cursor:progress}
+.hint{margin:10px 0 0;color:var(--muted);font-size:.92rem}
+#status{margin-top:14px;min-height:1.5em}
+.error{background:var(--fail-bg);color:var(--fail);border:1px solid #f1b5ba;border-radius:12px;padding:12px 14px;font-weight:600}
+.working{display:flex;gap:10px;align-items:center;color:var(--muted)}
+.spin{width:18px;height:18px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;animation:s 0.9s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+#results[hidden]{display:none}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin:16px 0}
+.stat{border-radius:12px;padding:10px 12px;border:1px solid var(--line);background:#fff}
+.stat b{display:block;font-size:1.6rem;line-height:1.1}
+.stat.fail{background:var(--fail-bg);color:var(--fail)} .stat.warn{background:var(--warn-bg);color:var(--warn)}
+.stat.pass{background:var(--pass-bg);color:var(--pass)} .stat.info{background:var(--info-bg);color:var(--info)} .stat.na{background:var(--na-bg);color:var(--na)}
+.meta{color:var(--muted);font-size:.92rem;word-break:break-word}
+.note{background:var(--warn-bg);color:#5c3700;border:1px solid #f0d28a;border-radius:12px;padding:12px 14px;margin:12px 0}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.toolbar label{display:flex;gap:8px;align-items:center;font-weight:600}
+h2{font-size:1.25rem;margin:26px 0 4px}
+.intro{margin:0 0 10px;color:var(--muted)}
+ul.checks{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+li.check{background:#fff;border:1px solid var(--line);border-left-width:6px;border-radius:12px;padding:12px 14px}
+li.check.pass{border-left-color:var(--pass)} li.check.warn{border-left-color:var(--warn)} li.check.fail{border-left-color:var(--fail)}
+li.check.info{border-left-color:var(--info)} li.check.na{border-left-color:var(--na)}
+.row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.label{font-weight:700}
+.badge{font-size:.78rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.badge.pass{background:var(--pass-bg);color:var(--pass)} .badge.warn{background:var(--warn-bg);color:var(--warn)} .badge.fail{background:var(--fail-bg);color:var(--fail)}
+.badge.info{background:var(--info-bg);color:var(--info)} .badge.na{background:var(--na-bg);color:var(--na)}
+.detail{margin:6px 0 0;color:#243b53}
+.ex{margin:6px 0 0;color:var(--muted);font-size:.85rem;word-break:break-all}
+.limits{margin-top:26px}
+.limits ul{margin:8px 0 0;padding-left:20px}
+footer{color:var(--muted);font-size:.88rem;padding:0 0 30px}
+@media print{header.site,form.scan,.toolbar,#status{display:none}main{margin:0}.card{box-shadow:none}li.check{break-inside:avoid}body{background:#fff}}
+@media (max-width:520px){h1{font-size:1.45rem}.btn{width:100%}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site">
+  <div class="wrap">
+    <h1>WebSwan Technical Audit Lab</h1>
+    <p>Check a public website for common accessibility, privacy and technical issues. Each result shows what was found, and what this scan cannot check.</p>
+  </div>
+</header>
+<main id="main" class="wrap" tabindex="-1">
+  <section class="card" aria-labelledby="scan-h">
+    <h2 id="scan-h" style="margin-top:0">Scan a website</h2>
+    <form class="scan" id="scanForm" novalidate>
+      <label for="url">Website address</label>
+      <input id="url" name="url" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="example.com" aria-describedby="hint" required>
+      <button class="btn" id="go" type="submit">Run scan</button>
+    </form>
+    <p class="hint" id="hint">Only public pages can be scanned. The scan reads the page source of the one address you enter, plus its privacy policy page if it links to one.</p>
+    <div id="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section id="results" hidden aria-labelledby="res-h">
+    <h2 id="res-h" tabindex="-1">Results</h2>
+    <div class="card">
+      <p class="meta" id="metaLine"></p>
+      <div id="notes"></div>
+      <div class="summary" id="summary" role="list" aria-label="Result counts"></div>
+      <div class="toolbar">
+        <label><input type="checkbox" id="issuesOnly"> Show only issues (Fail and Warning)</label>
+        <button class="btn secondary" id="copyBtn" type="button">Copy report</button>
+        <button class="btn secondary" id="jsonBtn" type="button">Export JSON</button>
+        <button class="btn secondary" id="printBtn" type="button">Print or save as PDF</button>
+      </div>
+    </div>
+    <div id="groups"></div>
+    <div class="card limits" id="limits"></div>
+  </section>
+</main>
+<div class="wrap"><footer>This report is automated and informational. It is not legal advice and does not certify that a website complies with the ADA, the CCPA/CPRA or any other law.</footer></div>
+
+<script>
+(function () {
+  var form = document.getElementById('scanForm'), input = document.getElementById('url'), go = document.getElementById('go');
+  var statusEl = document.getElementById('status'), results = document.getElementById('results');
+  var last = null;
+  var LABEL = { pass: 'Pass', warn: 'Warning', fail: 'Fail', info: 'Note', na: 'Not checkable' };
+  var ORDER = ['fail', 'warn', 'pass', 'info', 'na'];
+
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+
+  function setStatus(node) { statusEl.textContent = ''; if (node) statusEl.appendChild(node); }
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var v = input.value.trim();
+    if (!v) { var er = el('div', 'error', 'Enter a website address to scan.'); setStatus(er); input.focus(); return; }
+    go.disabled = true;
+    var w = el('div', 'working'); w.appendChild(el('span', 'spin')); w.appendChild(el('span', null, 'Scanning. This usually takes 5 to 15 seconds.'));
+    setStatus(w);
+    fetch('/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: v }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j, status: r.status }; }); })
+      .then(function (x) {
+        go.disabled = false;
+        if (!x.ok) {
+          var m = x.status === 429 ? 'Too many scans in a short time. Wait a minute and try again.' : (x.j && x.j.error) || 'The scan failed.';
+          setStatus(el('div', 'error', m)); return;
+        }
+        setStatus(null); last = x.j; render(x.j);
+      })
+      .catch(function () { go.disabled = false; setStatus(el('div', 'error', 'The scan could not be completed. Check your connection and try again.')); });
+  });
+
+  function render(d) {
+    results.hidden = false;
+    var m = d.meta;
+    document.getElementById('metaLine').textContent = 'Scanned ' + m.finalUrl + ' on ' + new Date(m.scannedAt).toLocaleString() + ' (HTTP ' + m.status + ', ' + Math.round(m.bytes / 1024) + ' KB of HTML).';
+    var notes = document.getElementById('notes'); notes.textContent = '';
+    (d.notes || []).forEach(function (n) { var p = el('p', 'note', n); notes.appendChild(p); });
+    if (m.status >= 400) notes.appendChild(el('p', 'note', 'The site answered with an error status. Some sites block automated visitors, so these results may be incomplete.'));
+    var sum = document.getElementById('summary'); sum.textContent = '';
+    ORDER.forEach(function (k) {
+      var s = el('div', 'stat ' + k); s.setAttribute('role', 'listitem');
+      s.appendChild(el('b', null, String(d.summary[k] || 0))); s.appendChild(el('span', null, LABEL[k])); sum.appendChild(s);
+    });
+    drawGroups();
+    var lim = document.getElementById('limits'); lim.textContent = '';
+    lim.appendChild(el('h2', null, 'What this scan cannot check')); lim.firstChild.style.marginTop = '0';
+    lim.appendChild(el('p', 'intro', 'A clean result here does not mean a site is accessible or compliant. Testing these needs a browser, assistive technology or legal review:'));
+    var ul = el('ul'); d.notCovered.forEach(function (t) { ul.appendChild(el('li', null, t)); }); lim.appendChild(ul);
+    var h = document.getElementById('res-h'); h.focus(); h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function drawGroups() {
+    var only = document.getElementById('issuesOnly').checked, root = document.getElementById('groups'); root.textContent = '';
+    last.groups.forEach(function (g) {
+      var checks = g.checks.filter(function (c) { return !only || c.status === 'fail' || c.status === 'warn'; });
+      var sec = el('section'); sec.setAttribute('aria-labelledby', 'g-' + g.id);
+      var h2 = el('h2', null, g.title); h2.id = 'g-' + g.id; sec.appendChild(h2);
+      sec.appendChild(el('p', 'intro', g.intro));
+      if (!checks.length) { sec.appendChild(el('p', 'intro', 'No issues in this section.')); root.appendChild(sec); return; }
+      var ul = el('ul', 'checks');
+      checks.slice().sort(function (a, b) { return ORDER.indexOf(a.status) - ORDER.indexOf(b.status); }).forEach(function (c) {
+        var li = el('li', 'check ' + c.status);
+        var row = el('div', 'row'); row.appendChild(el('span', 'label', c.label)); row.appendChild(el('span', 'badge ' + c.status, LABEL[c.status])); li.appendChild(row);
+        li.appendChild(el('p', 'detail', c.detail));
+        if (c.examples && c.examples.length) li.appendChild(el('p', 'ex', 'Examples: ' + c.examples.join(' | ')));
+        ul.appendChild(li);
+      });
+      sec.appendChild(ul); root.appendChild(sec);
+    });
+  }
+  document.getElementById('issuesOnly').addEventListener('change', function () { if (last) drawGroups(); });
+  document.getElementById('printBtn').addEventListener('click', function () { window.print(); });
+  document.getElementById('jsonBtn').addEventListener('click', function () {
+    if (!last) return;
+    var host = 'report'; try { host = new URL(last.meta.finalUrl).hostname; } catch (e) {}
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(last, null, 2)], { type: 'application/json' }));
+    a.download = 'audit-' + host + '.json'; document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    if (!last) return;
+    var lines = ['WebSwan Technical Audit Lab', last.meta.finalUrl + ' - ' + new Date(last.meta.scannedAt).toLocaleString(), ''];
+    ORDER.forEach(function (k) { lines.push(LABEL[k] + ': ' + (last.summary[k] || 0)); });
+    last.groups.forEach(function (g) {
+      lines.push('', g.title.toUpperCase());
+      g.checks.forEach(function (c) { lines.push('[' + LABEL[c.status] + '] ' + c.label + ' - ' + c.detail); });
+    });
+    lines.push('', 'Not covered: ' + last.notCovered.join('; '), 'Automated and informational only. Not legal advice.');
+    var txt = lines.join('\n'), btn = document.getElementById('copyBtn');
+    function done(ok) { btn.textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(function () { btn.textContent = 'Copy report'; }, 1800); }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(function () { done(true); }, function () { done(false); });
+    else { var ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { done(document.execCommand('copy')); } catch (e) { done(false); } ta.remove(); }
+  });
+})();
+</script>
+</body>
+</html>
